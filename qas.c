@@ -427,7 +427,7 @@ int parse(struct instr *in)
 		err = parse_op_add_simm(in, code);
 	} else if (code >= OP_MUL_FMULI && code <= OP_MUL_V8MAXI) {
 		goto check_mul;
-	} else if (code >= OP_MUL_FMULROTR5 && code <= OP_MUL_FMULROT15) {
+	} else if (code >= OP_MUL_V8ADDS_ROTR5 && code <= OP_MUL_V8ADDS_ROT15) {
 		goto check_mul;
 	} else if (code >= OP_BR_B && code <= OP_BR_BL) {
 		err = parse_op_branch(in, code);
@@ -466,7 +466,7 @@ check_mul:
 		err = parse_op_mul(in, code);
 	else if (code >= OP_MUL_FMULI && code <= OP_MUL_V8MAXI)
 		err = parse_op_mul_simm(in, code);
-	else if (code >= OP_MUL_FMULROTR5 && code <= OP_MUL_FMULROT15)
+	else if (code >= OP_MUL_V8ADDS_ROTR5 && code <= OP_MUL_V8ADDS_ROT15)
 		err = parse_op_mul_simm(in, code);
 	else
 		goto check_sigs;
@@ -600,13 +600,13 @@ int verify_alu(struct instr *in)
 
 	// If mul output is to be rotated, there shouldn't be any small
 	// immediates, or anyone reading from RF_B.
-	if (code >= OP_MUL_FMULROTR5 && code <= OP_MUL_FMULROT15 &&
+	if (code >= OP_MUL_V8ADDS_ROTR5 && code <= OP_MUL_V8ADDS_ROT15 &&
 	    (mask[RF_SIMM] || mask[RF_B]))
 		return -EINVAL;
 
 	// If mul output is to be rotated, the sources must be from RF_ACC,
 	// r0-r3.
-	if (code >= OP_MUL_FMULROTR5 && code <= OP_MUL_FMULROT15 &&
+	if (code >= OP_MUL_V8ADDS_ROTR5 && code <= OP_MUL_V8ADDS_ROT15 &&
 	    (op->src[2].rf != RF_ACC || op->src[3].rf != RF_ACC))
 		return -EINVAL;
 
@@ -616,7 +616,7 @@ int verify_alu(struct instr *in)
 
 	// If there are small immediate sources, or, if mul output is to be
 	// rotated, any RF_AB source must be converted to RF_A.
-	if (code >= OP_MUL_FMULROTR5 && code <= OP_MUL_FMULROT15 &&
+	if (code >= OP_MUL_V8ADDS_ROTR5 && code <= OP_MUL_V8ADDS_ROT15 &&
 	    mask[RF_SIMM]) {
 		for (i = 0; i < 4; ++i) {
 			if (op->src[i].rf != RF_AB)
@@ -880,8 +880,8 @@ int encode_alu(struct instr *in)
 	}
 
 	code = op->code[1];
-	if (code >= OP_MUL_FMULROTR5 && code <= OP_MUL_FMULROT15)
-		raddr_b = 48 + (code - OP_MUL_FMULROTR5);
+	if (code >= OP_MUL_V8ADDS_ROTR5 && code <= OP_MUL_V8ADDS_ROT15)
+		raddr_b = 48 + (code - OP_MUL_V8ADDS_ROTR5);
 
 	val = 0;
 	val |= bits_set(ENC_ALU_OP_MUL, eop[1]);
