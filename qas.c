@@ -641,19 +641,11 @@ int verify_alu(struct instr *in)
 
 		t = 1ul << op->src[i].num;
 
-		// Try resolving with RF_A.
-		if (mask[RF_A] & t) {
+		// Try resolving with RF_A, then RF_B.
+		if (mask[RF_A] & t)
 			op->src[i].rf = RF_A;
-			mask[RF_A] |= t;
-			continue;
-		}
-
-		// Try resolving with RF_B.
-		if (mask[RF_B] & t) {
+		else if (mask[RF_B] & t)
 			op->src[i].rf = RF_B;
-			mask[RF_B] |= t;
-			continue;
-		}
 	}
 
 	for (i = 0; i < 4; ++i) {
