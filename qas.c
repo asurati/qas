@@ -1042,7 +1042,7 @@ int main(int argc, char **argv)
 	int ls, le, i, err, num_instrs;
 	char *buf;
 	FILE *f;
-	long size;
+	long size, sz;
 	struct instr *instrs, *in;
 
 	if (argc != 2) {
@@ -1065,7 +1065,7 @@ int main(int argc, char **argv)
 	fclose(f);
 
 	num_instrs = 0;
-	instrs = calloc(100, sizeof(*instrs));
+	instrs = malloc(100 * sizeof(*instrs));
 	for (i = 0; i < size;) {
 		in = &instrs[num_instrs];
 		memset(in, 0, sizeof(*in));
@@ -1083,6 +1083,7 @@ int main(int argc, char **argv)
 		err = tokenize(buf, ls, le);
 		if (err)
 			break;
+		printf("pc %x: ", in->pc);
 		print_tokens(buf);
 
 		err = parse(in);
@@ -1092,8 +1093,8 @@ int main(int argc, char **argv)
 		++num_instrs;
 		if (num_instrs % 100)
 			continue;
-		size = (num_instrs + 100) * sizeof(*instrs);
-		instrs = realloc(instrs, size);
+		sz = (num_instrs + 100) * sizeof(*instrs);
+		instrs = realloc(instrs, sz);
 	}
 
 	if (err)
@@ -1109,5 +1110,10 @@ int main(int argc, char **argv)
 			break;
 		printf("0x%08x, 0x%08x,\n", in->lo, in->hi);
 	}
+
+	if (i == num_instrs)
+		printf("done\n");
+	else
+		printf("fault at pc %x\n", in->pc);
 	return err;
 }
