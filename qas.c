@@ -1039,7 +1039,7 @@ int parse_labels(struct instr *in, int ix, int size, int *out_le,
 
 int main(int argc, char **argv)
 {
-	int ls, le, i, err, num_instrs;
+	int ls, le, i, err, num_instrs, j;
 	char *buf;
 	FILE *f;
 	long size, sz;
@@ -1083,6 +1083,10 @@ int main(int argc, char **argv)
 		err = tokenize(buf, ls, le);
 		if (err)
 			break;
+
+		in->line_start = ls;
+		in->line_end = le;
+
 		printf("pc %x: ", in->pc);
 		print_tokens(buf);
 
@@ -1108,7 +1112,15 @@ int main(int argc, char **argv)
 		err = encode(in);
 		if (err)
 			break;
-		printf("0x%08x, 0x%08x,\n", in->lo, in->hi);
+		printf("0x%08x, 0x%08x, // ", in->lo, in->hi);
+
+		for (j = 0; j < in->num_labels; ++j)
+			printf("%s: ", in->labels[j]);
+
+		for (j = in->line_start; j < in->line_end; ++j)
+			printf("%c", buf[j]);
+		printf("\n");
+
 	}
 
 	if (i == num_instrs)

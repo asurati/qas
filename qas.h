@@ -599,6 +599,8 @@ struct instr {
 	int				curr_token;
 	char				**labels;
 	int				num_labels;
+	int				line_start;
+	int				line_end;
 };
 
 #define ENC_ALU_MUL_1_POS		0
@@ -726,7 +728,7 @@ int encode_alu_op_mul(enum op_code code)
 	case OP_MUL_V8MULDI:		return 3;
 	case OP_MUL_V8MINI:		return 4;
 	case OP_MUL_V8MAXI:		return 5;
-	
+
 	case OP_MUL_V8ADDS_ROTR5:
 	case OP_MUL_V8ADDS_ROT1:
 	case OP_MUL_V8ADDS_ROT2:
