@@ -59,6 +59,7 @@ void parse_nop(struct instr *in)
 {
 	struct op *op;
 
+	in->pack = OP_PACK_NOP;
 	in->sig = OP_SIG_NONE;
 
 	op = &in->op;
@@ -208,12 +209,22 @@ int parse_op_signals(struct instr *in, enum op_code code)
 }
 
 static
+int parse_op_pack(struct instr *in, enum op_code code)
+{
+	// Can't have more than one pack specifiers.
+	if (in->pack != OP_PACK_NOP)
+		return -EINVAL;
+	if (code >= OP_PACK_MUL_8888 && code <= OP_PACK_MUL_8D)
+		in->pm = 1;
+	in->pack = code;
+	return ESUCC;
+}
+
+static
 int parse_op_flags(struct instr *in, enum op_code code)
 {
 	if (code == OP_FLAGS_SF)
 		in->sf = 1;
-	else if (code == OP_FLAGS_PM)
-		in->pm = 1;
 	else
 		return -EINVAL;
 	return ESUCC;
@@ -437,7 +448,7 @@ int parse(struct instr *in)
 		err = parse_op_load_imm(in, code);
 	} else if (code >= OP_SIG_BREAK && code <= OP_SIG_LD_ALPHA) {
 		goto check_sigs;
-	} else if (code >= OP_FLAGS_SF && code <= OP_FLAGS_PM) {
+	} else if (code >= OP_FLAGS_SF && code <= OP_FLAGS_SF) {
 		goto check_flags;
 	}
 
@@ -460,7 +471,7 @@ int parse(struct instr *in)
 		return -EINVAL;
 
 check_mul:
-	// mul, signals, and flags
+	// mul, signals, flags, unpack, and pack
 	err = -EINVAL;
 	if (code >= OP_MUL_FMUL && code <= OP_MUL_V8MAX)
 		err = parse_op_mul(in, code);
@@ -480,7 +491,7 @@ check_mul:
 	if (err)
 		return err;
 check_sigs:
-	// signals, and flags.
+	// signals, flags, unpack, and pack
 	err = -EINVAL;
 	if (code >= OP_SIG_BREAK && code <= OP_SIG_LD_ALPHA)
 		err = parse_op_signals(in, code);
@@ -496,17 +507,33 @@ check_sigs:
 	if (err)
 		return err;
 check_flags:
+	// flags, unpack, and pack
 	err = -EINVAL;
-	if (code >= OP_FLAGS_SF && code <= OP_FLAGS_PM)
+	if (code >= OP_FLAGS_SF && code <= OP_FLAGS_SF)
 		err = parse_op_flags(in, code);
+	else
+		goto check_unpack;
+
+	get_token(in, token);
+	if (!strcmp(token, ";"))
+		return ESUCC;
+	err = parse_op_code(token, &code);
+	if (err)
+		return err;
+check_unpack:
+	// unpack, and pack.
+	// Nothing here at the moment.
+	goto check_pack;
+check_pack:
+	err = -EINVAL;
+	if (code >= OP_PACK_NOP && code <= OP_PACK_MUL_8D)
+		err = parse_op_pack(in, code);
 	if (err)
 		return err;
 
 	get_token(in, token);
 	if (!strcmp(token, ";"))
 		return ESUCC;
-
-	// Nothing should be there after flags.
 	return -EINVAL;
 }
 
@@ -746,23 +773,24 @@ int verify(struct instr *in, const struct instr *ins, int num_instrs)
 static
 int encode_load_imm(struct instr *in)
 {
-	int esig, ecc[2];
+	int esig, ecc[2], epack;
 	unsigned int val;
 	struct op *op;
 
 	op = &in->op;
 
+	epack = encode_pack(in->pack);
 	esig = encode_sig(in->sig);
 	ecc[0] = encode_cond(op->cc[0]);
 	ecc[1] = encode_cond(op->cc[1]);
 
-	if (esig < 0 || ecc[0] < 0 || ecc[1] < 0)
+	if (esig < 0 || ecc[0] < 0 || ecc[1] < 0 || epack < 0)
 		return -EINVAL;
 
 	val = 0;
 	val |= bits_set(ENC_SIG, esig);
 	val |= bits_set(ENC_UNPACK, in->unpack);
-	val |= bits_set(ENC_PACK, in->pack);
+	val |= bits_set(ENC_PACK, epack);
 	val |= bits_set(ENC_COND_ADD, ecc[0]);
 	val |= bits_set(ENC_COND_MUL, ecc[1]);
 	val |= bits_set(ENC_WADDR_ADD, op->dst[0].num);
@@ -817,26 +845,29 @@ int encode_branch(struct instr *in)
 static
 int encode_alu(struct instr *in)
 {
-	int esig, ecc[2], eop[2], emuxes[4];
+	int esig, ecc[2], eop[2], emuxes[4], epack;
 	int raddr_a, raddr_b, val, i;
 	struct op *op;
 	enum op_code code;
 
 	op = &in->op;
 
+	epack = encode_pack(in->pack);
 	esig = encode_sig(in->sig);
 	ecc[0] = encode_cond(op->cc[0]);
 	ecc[1] = encode_cond(op->cc[1]);
 	eop[0] = encode_alu_op_add(op->code[0]);
 	eop[1] = encode_alu_op_mul(op->code[1]);
 
-	if (esig < 0 || ecc[0] < 0 || ecc[1] < 0 || eop[0] < 0 || eop[1] < 0)
+
+	if (esig < 0 || ecc[0] < 0 || ecc[1] < 0 || eop[0] < 0 || eop[1] < 0 ||
+	    epack < 0)
 		return -EINVAL;
 
 	val = 0;
 	val |= bits_set(ENC_SIG, esig);
 	val |= bits_set(ENC_UNPACK, in->unpack);
-	val |= bits_set(ENC_PACK, in->pack);
+	val |= bits_set(ENC_PACK, epack);
 	val |= bits_set(ENC_COND_ADD, ecc[0]);
 	val |= bits_set(ENC_COND_MUL, ecc[1]);
 	val |= bits_set(ENC_WADDR_ADD, op->dst[0].num);

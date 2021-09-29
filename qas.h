@@ -117,9 +117,14 @@ enum op_code {
 	OP_SIG_LD_TMU1,
 	OP_SIG_LD_ALPHA,
 	OP_FLAGS_SF,
-	OP_FLAGS_PM,
 
 	// Add pack/unpack flags here.
+	OP_PACK_NOP,
+	OP_PACK_MUL_8888,
+	OP_PACK_MUL_8A,
+	OP_PACK_MUL_8B,
+	OP_PACK_MUL_8C,
+	OP_PACK_MUL_8D,
 
 	// These signals cannot be specified explicitly.
 	// They are used to set in->sig.
@@ -562,7 +567,12 @@ const struct op_info g_op_info[] = {
 	{"lda",		OP_SIG_LD_ALPHA},
 
 	{"sf",		OP_FLAGS_SF},
-	{"pm",		OP_FLAGS_PM},
+
+	{"pm8888",	OP_PACK_MUL_8888},
+	{"pm8a",	OP_PACK_MUL_8A},
+	{"pm8b",	OP_PACK_MUL_8B},
+	{"pm8c",	OP_PACK_MUL_8C},
+	{"pm8d",	OP_PACK_MUL_8D},
 };
 
 struct reg {
@@ -584,12 +594,12 @@ struct instr {
 	unsigned int			hi;
 
 	enum op_code			sig;
+	enum op_code			pack;
 
 	char				sf;
 	char				pm;
 	char				ws;
 	char				unpack;
-	char				pack;
 	char				rel_br;
 	char				reg_br;
 
@@ -683,6 +693,20 @@ int encode_cond_br(enum cc code)
 	case CC_C:			return 10;
 	case CC_NC:			return 11;
 	case CC_ALWAYS:			return 15;
+	default:			return -EINVAL;
+	}
+}
+
+static
+int encode_pack(enum op_code pack)
+{
+	switch (pack) {
+	case OP_PACK_NOP:		return 0;
+	case OP_PACK_MUL_8888:		return 3;
+	case OP_PACK_MUL_8A:		return 4;
+	case OP_PACK_MUL_8B:		return 5;
+	case OP_PACK_MUL_8C:		return 6;
+	case OP_PACK_MUL_8D:		return 7;
 	default:			return -EINVAL;
 	}
 }
