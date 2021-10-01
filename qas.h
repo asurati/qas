@@ -260,6 +260,7 @@ const struct reg_info g_src_reg_info[] = {
 	{"x_px_coord",		RF_A,		41},
 	{"y_px_coord",		RF_B,		41},
 	{"ms_flags",		RF_A,		42},
+	{"ms_mask",		RF_A,		42},
 	{"rev_flag",		RF_B,		42},
 
 	{"vpm_rd",		RF_AB,		48},
